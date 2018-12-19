@@ -10,12 +10,6 @@ from lxml import etree
 import re
 import pandas as pd 
 
-# 有时候request链接会随机出现错误，需要让这个循环在出现错误的时候不break，继续执行
-'''
-ConnectionError: HTTPConnectionPool(host='cmispub.cicpa.org.cn', port=80): Max retries exceeded with url: /cicpa2_web/PersonIndexAction.do (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000000B53BFE4908>: Failed to establish a new connection: [WinError 10013] An attempt was made to access a socket in a way forbidden by its access permissions',))
-'''
-
-
 
 names   = []
 gender  = []
@@ -49,8 +43,18 @@ def search_match(pattern,text):
             result = x[-3]
     else:
         result = " "
+    if result == '<tdclass=\"data_tb_content\">' :
+        result = '无'
     print(result)
     return result
+
+def get_html(text):
+    selector = etree.HTML(text)
+    ar = selector.xpath('//a[contains(text(), names[1])]/@href')
+    #print(ar)
+    if "#" in ar:
+        ar.remove("#")
+    return [l for l in ar if not re.search('javascript:gotoPage\(\d+\)', l)]
 
 with open('auditor.csv', newline='', encoding='utf-8') as f:
     reader = csv.reader(f)
@@ -60,25 +64,19 @@ with open('auditor.csv', newline='', encoding='utf-8') as f:
 
 names.remove(names[0])
 #names.remove(names[15])
-
-#print(names)
     
 for i, n in enumerate(names):
-    #if i > 3:
-        #break
+    #if i > 1:
+    #    break
     print(n)
     name1 = n 
-    name = n.encode('GB2312', 'ignore')   
+    name = n.encode('GB18030', 'ignore')   
     print(name)
-    
-    
-    # 调试 **
-    # name = names[7].encode('GB2312')
-    # aname.append(i)
-    # name = "刘旻".encode('GB2312')
 
     data={  "isStock": "00", 
             "method": "indexQuery",
+            "pageNum":"",
+            "pageSize":"",
             "perCode":"",
             "perName": name, 
             "queryType":"2"
@@ -94,15 +92,25 @@ for i, n in enumerate(names):
         print("no information")
         #aname.remove(i)
         continue
-             
-    selector = etree.HTML(r.text)
-    id_2 = selector.xpath('//a[contains(text(), names[1])]/@href')
-    #print(id_2[0])
-    if "#" in id_2:
-        id_2.remove("#")
-   # id_2 = [l for l in id_2 if not re.search('javascript:gotoPage(383);', l)]      
-    id_2 = [l for l in id_2 if not re.search('javascript:gotoPage\(\d+\)', l)]     
- 
+    
+    id_2 = get_html(r.text)  
+    #print(id_2)
+    # get total page number
+    pattern = re.compile(r'共\s+\d\s+页')
+    match = re.search(pattern,r.text)  
+    x = match.group()
+    pageNum = int(x[2])
+    for p in range(pageNum-1):
+        data["pageNum"] = str(p+2)
+        try:
+            r = requests.post("http://cmispub.cicpa.org.cn/cicpa2_web/PersonIndexAction.do", data=data)
+        except RequestException as e:
+            print(e)
+            continue
+        id_2.extend(get_html(r.text))
+    #exit()
+    print(len(id_2))
+
                   ## 处理如果搜到多个会计师的状况
     for y in id_2:
         #y = id_2[14]
@@ -117,7 +125,7 @@ for i, n in enumerate(names):
         except RequestException as e:
             print(e)
             continue
-        r.encoding='GB2312'
+        r.encoding='GB18030'
         #print(r.text)
         a = r.text 
         #print(a)
@@ -153,10 +161,7 @@ for i, n in enumerate(names):
         ## 学校有一些有乱码，需要加if选择
         # school 
         pattern = re.compile(r'毕业学校\s+</td>\s+<td class=\"data_tb_content\">\n.+\n')
-        if search_match(pattern,r.text) == '<tdclass=\"data_tb_content\">' :
-            school.append("无")
-        else:
-            school.append(search_match(pattern,r.text)) 
+        school.append(search_match(pattern,r.text))
         
         # branch 
         pattern = re.compile(r'所在事务所\s+</td>\s+<td class=\"data_tb_content\" colspan=\'6\'>\n.+\n')
@@ -190,5 +195,5 @@ d = {
         'Ispartner':Ispartner
     }
 df = pd.DataFrame(data=d)
-df.to_csv("result.csv", sep='\t', encoding='GB2312')
+df.to_csv("result.csv", sep='\t', encoding='GB18030')
 
