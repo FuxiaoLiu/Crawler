@@ -1,2 +1,2 @@
 # Crawler
-A sample code for using post request.
+Some sample code for crawler.
