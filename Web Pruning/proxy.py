@@ -31,7 +31,7 @@ logging.getLogger().addHandler(fh)
 # Add more grammar here, now 97 files out of 499 files works
 grammar = [
     '<(?:div|p).*\n.*<(?:font|b)>\n\s*COMPENSATION\s*DISCUSSION\s.*ANALYSIS\n.*</(?:font|b)>\n\s*</(?:div|p)>',
-    '<(?:div|p).*\n.*<(?:font|b)>\n\s*Comepnsation\s*Discussion\s.*Aaalysis\n.*</(?:font|b)>\n\s*</(?:div|p)>',
+    '<(?:div|p).*\n.*<(?:font|b)>\n\s*Compensation\s*Discussion\s.*Analysis\n.*</(?:font|b)>\n\s*</(?:div|p)>',
     '<(?:div|p).*\n.*<(?:font|b)>.*\n.*<(?:font|b).*\n\s*COMPENSATION\s*DISCUSSION\s.*ANALYSIS\n.*</(?:font|b)>\n.*</(?:font|b)>\n\s*</(?:div|p)>',
     '<(?:div|p).*\n.*<(?:font|b)>.*\n.*<(?:font|b).*\n\s*Compensation\s*Discussion\s.*Analysis\n.*</(?:font|b)>\n.*</(?:font|b)>\n\s*</(?:div|p)>'
     ]
@@ -130,7 +130,7 @@ def process(path, data_path):
                 new_grammar = grammar[j]+"[\s\S]*?"+sen[0] # Generate new grammar to catch by hierarchy
                 new_pattern = re.compile(new_grammar)
                 new_match = re.search(new_pattern,text)
-                if not match:
+                if not new_match:
                     logging.info("file %s meet error", files[i])
                     break
 
